@@ -1,0 +1,80 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: ordering-service
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123
+
+
+#  서킷 브레이커 (Circuit Breaker)
+#  - 서비스 호출 실패율이 일정 기준을 넘을 때, 호출을 차단(Open)하여 추가적인 실패를 방지하는 패턴.
+#
+# Open: 실패율이 기준을 초과해서 열림 상태로 전환. 요청을 차단하고 즉시 예외를 반환
+# Closed: 정상 상태. 요청이 성공적으로 처리되면 원래의 상태 유지.
+# Half-Open: 일정 시간이 지나 테스트 요청을 보낸 후 성공 여부에 따라 상태를 결정
+resilience4j:
+  circuitbreaker:
+    configs:
+      default: # 서킷브레이커 이름 (서비스마다 다르게 지어주는 것을 추천)
+        register-health-indicator: true # 서비스 헬스체크 활성화
+        # 슬라이딩 윈도우(일정 크기의 요청 집합) 기법을 사용하여 최신 요청 데이터를 지속적으로 갱신
+        # count_based: 고정된 요청 수를 기반으로 실패율 계산
+        # time_based: 고정된 시간 간격으로 발생한 요청 기준으로 실패율 계산
+        sliding-window-type: count_based
+        sliding-window-size: 10 # 성공/실패 판단할 요청 개수
+        minimum-number-of-calls: 5 # 서킷 상태 전환 판단할 최소 호출 수
+        failure-rate-threshold: 50 # 실패율 50%가 넘으면 서킷 브레이커 발동 (OPEN)
+        wait-duration-in-open-state: 10000 # open 상태에서 10초 기다린 후 half-open 상태로 전환
+        permitted-number-of-calls-in-half-open-state: 3 # half-open 상태에서 시도할 호출 수
+        #record-exceptions: # 실패로 기록될 예외 클래스들
+        ignore-exceptions: # 무시할 예외 (실패로 안침) -> 클라이언트 오류 400번대
+          - org.springframework.web.client.HttpClientErrorException
+    instances:
+      userService: # user-service용 전용 설정
+        base-config: default
+        sliding-window-size: 10
+      productService: # product-service용 전용 설정
+        base-config: default
+        sliding-window-size: 30
+      productServiceUpdate: # 재고 차감 전용 인스턴스 추가
+        base-config: default
+        sliding-window-size: 5
+        failure-rate-threshold: 30
+        wait-duration-in-open-state: 5000
+
+
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 3s # 요청이 몇 초 안에 완료되어야 하는지
+        cancel-running-future: true # 실행중인 작업 취소 여부, true 주면 타임아웃 발생 시 작업 강제 취소
+    instances:
+      userService:
+        base-config: default
+      productService:
+        base-config: default
+        timeout-duration: 1s
+      productServiceUpdate: # 재고 차감용 타임리미터 설정도 추가
+        base-config: default
+        timeout-duration: 1s
+  retry:
+    instances:
+      userService:
+        max-attempts: 3 # 원래 요청 1 + 재시도 2 = 총 3번 시도
+        wait-duration: 1s
+      productService:
+        max-attempts: 5
+        wait-duration: 2s
+      productServiceUpdate: # 재고 차감 재시도도 별도 설정 가능
+        max-attempts: 3
+        wait-duration: 1s
+
+
+
+
+

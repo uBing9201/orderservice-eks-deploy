@@ -1,0 +1,82 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: gateway-service
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          "[/**]": # 모든 경로에 대한 CORS 설정을 시작하겠다.
+            allowed-origins:
+#              - "http://localhost:5173"
+#              - "https://playdatashop8917.store"
+              - "http://localhost:5174"
+              - "http://playdata-ooderservice9201.s3-website.ap-northeast-2.amazonaws.com"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowed-headers:
+              - Content-Type
+              - Authorization
+              - X-Requested-With # AJAX 요청임을 표시 (우리가 세팅하는 건 아님)
+            allow-credentials: true # 인증 정보 포함 요청을 허용하겠다.
+
+      default-filters:
+        - name: GlobalFilter
+          args:
+            baseMessage: hello gateway!
+            preLogger: false
+            postLogger: true
+      routes:
+        - id: user-service
+          #          uri: lb://USER-SERVICE
+          # k8s 클러스터 내에서 다른 서비스를 지목하기위한 DNS 명명 규칙.
+          # <service-name>.<namespace>.svc.cluster.local:port
+          uri: http://user-service.default.svc.cluster.local:8081
+          predicates:
+            - Path=/user-service/user/doLogin
+            - Method=POST
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+
+        - id: user-service
+          uri: http://user-service.default.svc.cluster.local:8081
+          predicates:
+            - Path=/user-service/**
+          filters:
+            # ??? ???? ???? ? ???? ????? ?? ?? ?? ? ???? ?? (?? ??)
+            - RemoveRequestHeader=Cookie
+            # ?? ??? ?? ??? ?? ??? ??? ?? -> ????? ?? ?? (??? ??)
+            # ex) /user-service/users/123 -> /users/123? ???? ?? ??.
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+            - AuthorizationHeaderFilter
+
+        - id: product-service
+          uri: http://product-service.default.svc.cluster.local:8082
+          predicates:
+            - Path=/product-service/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/product-service/(?<segment>.*), /$\{segment}
+            - AuthorizationHeaderFilter
+
+        - id: ordering-service
+          uri: http://ordering-service.default.svc.cluster.local:8083
+          predicates:
+            - Path=/ordering-service/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/ordering-service/(?<segment>.*), /$\{segment}
+            - AuthorizationHeaderFilter

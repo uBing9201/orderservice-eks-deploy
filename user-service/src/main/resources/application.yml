@@ -1,0 +1,42 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: user-service
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123
+
+  mail:
+    host: smtp.naver.com # SMTP 서버 호스트
+    port: 465 # SMTP 서버 포트
+    username: ubing0101
+    password:  # 앱 비밀번호 16자리 (공백없이)
+    properties:
+      mail:
+        smtp:
+          auth: true # 사용자 인증 시도 여부 (앱 비밀번호로 인증)
+          timeout: 5000
+          ssl:
+            enable: true
+            trust: smtp.naver.com
+#          starttls:
+#            enable: true 구글(gmail) 설정은 tls 사용 허용
+
+# 카카오 로그인용 데이터
+oauth2:
+  kakao:
+    client-id: c2415487845ccf14d865790f3ab449af
+    redirect-uri: http://localhost:8000/user-service/user/kakao
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health, busrefresh, beans
