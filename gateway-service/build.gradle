@@ -28,6 +28,7 @@ ext {
 }
 
 dependencies {
+	// Eureka 설정 지워주셔야 합니다!
 	implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'

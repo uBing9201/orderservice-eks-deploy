@@ -6,7 +6,6 @@ import com.playdata.orderingservice.client.ProductServiceClient;
 import com.playdata.orderingservice.client.UserServiceClient;
 import com.playdata.orderingservice.common.auth.TokenUserInfo;
 import com.playdata.orderingservice.common.dto.CommonResDto;
-import com.playdata.orderingservice.ordering.controller.SseController;
 import com.playdata.orderingservice.ordering.dto.OrderingListResDto;
 import com.playdata.orderingservice.ordering.dto.OrderingSaveReqDto;
 import com.playdata.orderingservice.ordering.dto.ProductResDto;
@@ -16,13 +15,11 @@ import com.playdata.orderingservice.ordering.entity.OrderStatus;
 import com.playdata.orderingservice.ordering.entity.Ordering;
 import com.playdata.orderingservice.ordering.repository.OrderingRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.ws.rs.ServiceUnavailableException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreaker;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
@@ -177,7 +174,7 @@ public class OrderingService {
                 // 주문 내역 리스트에 상세 내역을 add하기.
                 // (cascadeType.PERSIST로 세팅했기 때문에 함께 INSERT가 진행될 것!)
                 ordering.getOrderDetails().add(orderDetail);
-            } catch (ServiceUnavailableException e) {
+            } catch (IllegalStateException e) {
                 // product와의 통신에서는 경우의 수가 2가지 이기 때문에
                 // 에러 메세지에 포함 되어있는 단어의 유무에 따라 status를 다르게 세팅.
                 ordering.updateStatus(
@@ -212,7 +209,7 @@ public class OrderingService {
 
         } catch (Exception e) {
             log.error("재고 차감 실패! 상품 ID: {}, 오류: {}", prodResDto.getId(), e.getMessage());
-            throw new ServiceUnavailableException("재고 차감 실패");
+            throw new IllegalStateException("재고 차감 실패");
         }
     }
 
@@ -230,7 +227,7 @@ public class OrderingService {
             return byId.getResult();
         } catch (Exception e) {
             log.error("상품 정보 조회 실패! 상품 ID: {}, 오류: {}", productId, e.getMessage());
-            throw new ServiceUnavailableException("상품 정보 조회 실패");
+            throw new IllegalStateException("상품 정보 조회 실패");
         }
     }
 
